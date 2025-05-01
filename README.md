@@ -24,7 +24,7 @@ Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
 - Create OAuth 2.0 Client ID.
 - Set **Authorized redirect URI** to:
   ```
-  https://api.novel.mohuls.com/api/accounts/auth/google/callback/
+  https://yourdomain/api/accounts/auth/google/callback/
   ```
 - Copy:
   - `Client ID`
