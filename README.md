@@ -47,50 +47,86 @@ Create `GoogleAuthCallbackView` in Django:
 ```python
 class GoogleAuthCallbackView(APIView):
     permission_classes = [AllowAny]
-
+    
     def get(self, request):
         code = request.GET.get('code')
         if not code:
             return Response({'error': 'Missing code'}, status=400)
 
-        # 1. Exchange code for token
-        token_res = requests.post('https://oauth2.googleapis.com/token', data={
+        # Step 1: Exchange code for access token
+        token_url = 'https://oauth2.googleapis.com/token'
+        token_data = {
             'code': code,
             'client_id': GOOGLE_CLIENT_ID,
             'client_secret': GOOGLE_CLIENT_SECRET,
             'redirect_uri': REDIRECT_URI,
             'grant_type': 'authorization_code'
-        })
+        }
+        token_res = requests.post(token_url, data=token_data)
         if token_res.status_code != 200:
             return Response({'error': 'Failed to get token'}, status=400)
         token_json = token_res.json()
-
-        # 2. Get user info
         id_token = token_json.get('id_token')
-        userinfo_res = requests.get(f'https://oauth2.googleapis.com/tokeninfo?id_token={id_token}')
+
+        # Step 2: Decode and verify ID token with Google
+        id_info_url = f'https://oauth2.googleapis.com/tokeninfo?id_token={id_token}'
+        userinfo_res = requests.get(id_info_url)
         if userinfo_res.status_code != 200:
-            return Response({'error': 'Failed to verify token'}, status=400)
+            return Response({'error': 'Failed to verify ID token'}, status=400)
         user_info = userinfo_res.json()
 
-        # 3. Create/Get user
         email = user_info.get('email')
         name = user_info.get('name')
         picture = user_info.get('picture')
-        user, _ = User.objects.get_or_create(username=email, defaults={'email': email, 'first_name': name})
+        if not email:
+            return Response({'error': 'Invalid Google response'}, status=400)
 
-        profile = UserProfile.objects.filter(user=user).first()
-        if picture and profile:
-            img_res = requests.get(picture)
-            if img_res.status_code == 200:
-                profile.image.save(f'{user.username}_profile.jpg', ContentFile(img_res.content), save=True)
+        # Step 3: Get or create user
 
-        image_url = profile.image.url if profile and profile.image else ''
+        # Step 3: Get or create user - Modified to handle existing email
+        try:
+            user = User.objects.get(email=email)
+            created = False
+        except User.DoesNotExist:
+            # Create user with a unique username if email exists
+            username = email  # or generate a unique username
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                first_name=name
+            )
+            created = True
+
+        # Get or create profile
+        profile, profile_created = Profile.objects.get_or_create(user=user)
         
-        # 4. Generate JWT tokens
+        if picture and profile:
+            from django.core.files.base import ContentFile
+            try:
+                img_response = requests.get(picture)
+                if img_response.status_code == 200:
+                    profile.profile_image.save(
+                        f'{user.username}_profile.jpg',
+                        ContentFile(img_response.content),
+                        save=True
+                    )
+            except Exception as e:
+                print("Image download failed:", e)
+        
+        
+        if profile:
+            if profile.profile_image:
+                image_url = profile.profile_image.url
+            else:
+                image_url = ''
+        else:
+            image_url = ''
+        
+        # Step 4: Issue JWT tokens
         refresh = RefreshToken.for_user(user)
-        return redirect(
-            f"https://localhost:3000/?access={refresh.access_token}&refresh={refresh}&username={email}&first_name={name}&image={image_url}"
-        )
+        
+        react_redirect_url = f"https://localhost:3000/?access={refresh.access_token}&refresh={refresh}&username={email}&first_name={name}&image={image_url}"
+        return redirect(react_redirect_url)
 ```
 
 ---
