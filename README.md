@@ -35,8 +35,8 @@ Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
 In Django settings or a safe environment file:
 
 ```python
-GOOGLE_CLIENT_ID = 'your_id'
-GOOGLE_CLIENT_SECRET = 'your_secret'
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET')
 REDIRECT_URI = 'https://yourdomain/api/accounts/auth/google/callback/'
 ```
 
@@ -165,8 +165,8 @@ Go to [Microsoft Azure Portal](https://portal.azure.com):
 ### ⚙️ 2. **Backend Settings**
 
 ```python
-MICROSOFT_CLIENT_ID = 'your_id'
-MICROSOFT_CLIENT_SECRET = 'your_secret'
+MICROSOFT_CLIENT_ID = config('MICROSOFT_CLIENT_ID')
+MICROSOFT_CLIENT_SECRET = config('MICROSOFT_CLIENT_SECRET')
 MICROSOFT_REDIRECT_URI = 'https://yourdomain/api/accounts/auth/microsoft/callback/'
 ```
 
